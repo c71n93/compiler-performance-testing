@@ -40,14 +40,8 @@ Config file - is a file with required variables. It can be passed to the script 
 Structure of config file:
 ```
 [PATHS]
-build_path = /path/to/build/directory
 test_suite_path = /path/to/test-suite
 lit_path = /path/to/llvm-lit
-
-[FILES]
-cmake_toolchain_file = /path/to/cmake/toolchain/file
-res_file = /path/to/file/with/test/results.json
-test_suite_subdirs_file = path/to/file/with/test-suite/subdirs/list
 
 [REMOTE HOST]
 remote_hostname = 255.255.255.255
@@ -56,12 +50,28 @@ remote_username = username
 [MULTITHREADING]
 build_threads = 4
 run_threads = 4
+
+[TOOLCHAINS]
+toolchains_number = 3
+
+[TOOLCHAIN 1]
+toolchain_name = gcc-O0
+build_path = /path/to/build/directory
+cmake_toolchain_file = cmake-toolchain/gcc
+test_suite_subdirs_file = path/to/file/with/test-suite/subdirs/list
+res_file = /path/to/file/with/test/results.json
+
+[TOOLCHAIN 2]
+...
+
+[TOOLCHAIN 3]
+...
 ```
 *You can just copy it and change necessary values*
 
 Meaning of variables:
 
-**PATHS**
+**[PATHS]**
 - `build_path` *(required)* - path to build directory (tests will be compiled there)
 *Important note: use build directory only into `/home/` directory*
 - `test_suite_path` *(required)* - path to directory with [test-suite](https://github.com/llvm/llvm-test-suite.git) sources

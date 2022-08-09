@@ -12,5 +12,5 @@ set(CMAKE_CXX_FLAGS_RELEASE "${OPT_FLAG}" CACHE STRING "" FORCE)
 
 set(CMAKE_C_COMPILER /usr/bin/aarch64-linux-gnu-gcc CACHE STRING "" FORCE)
 set(CMAKE_C_COMPILER_TARGET ${triple})
-set(CMAKE_CXX_COMPILER /usr/bin/aarch64-linux-gnu-gсс CACHE STRING "" FORCE)
+set(CMAKE_CXX_COMPILER /usr/bin/aarch64-linux-gnu-g++ CACHE STRING "" FORCE)
 set(CMAKE_C_COMPILER_TARGET ${triple})

@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+#TODO: stop script if error is occured while building
+#TODO: stop script if error is occured while compiling
+#TODO: stop script if error is occured while syncing
+
 import sys
 import os
 import paramiko
@@ -8,17 +12,14 @@ import argparse
 import re
 
 
-build_path 			 		= ""
-test_suite_path 	 		= ""
-lit_path 			 		= ""
-remote_hostname 	 		= ""
-remote_username 	 		= ""
-build_threads 		 		= 1
-run_threads 		 		= 1
-cmake_toolchain_files_list 	= ""
-res_file 			 		= "result.json"
-test_suite_subdirs_file 	= ""
-test_suite_subdirs 	 		= "default"
+test_suite_path   = ""
+lit_path 		  = ""
+remote_hostname   = ""
+remote_username   = ""
+build_threads 	  = 1
+run_threads 	  = 1
+toolchains_number = 1
+toolchains_dict   = {}
 
 
 def check_args(args):
@@ -35,10 +36,9 @@ def check_args(args):
 		exit()
 
 
-def get_values_from_config(config_file):
-	global build_path, test_suite_path, lit_path, remote_hostname, \
-		   remote_username, build_threads, run_threads, cmake_toolchain_file, \
-		   res_file, test_suite_subdirs_file, test_suite_subdirs
+def get_values_from_config(config_file): #TODO: use config.get()
+	global test_suite_path, lit_path, remote_hostname, remote_username, \
+		   build_threads, run_threads, toolchains_number, toolchains_dict
 
 	config = configparser.ConfigParser()
 	config.read(config_file)
@@ -47,19 +47,32 @@ def get_values_from_config(config_file):
 		if 'build_threads' in config['MULTITHREADING']:
 			build_threads = config['MULTITHREADING']['build_threads']
 		if 'run_threads' in config['MULTITHREADING']:
-			build_threads = config['MULTITHREADING']['run_threads']
-	if 'res_file' in config['FILES']:
-		res_file = config['FILES']['res_file']
-	if 'test_suite_subdirs_file' in config['FILES']:
-		test_suite_subdirs_file = config['FILES']['test_suite_subdirs_file']
-		test_suite_subdirs 	 	= get_test_suite_subdirs(test_suite_subdirs_file)
+			run_threads = config['MULTITHREADING']['run_threads']
+	if 'TOOLCHAINS' in config:
+		if 'toolchains_number' in config['TOOLCHAINS']:
+			toolchains_number = int(config['TOOLCHAINS']['toolchains_number'])
+	test_suite_path = config['PATHS']['test_suite_path']
+	lit_path 		= config['PATHS']['lit_path']
+	remote_hostname = config['REMOTE HOST']['remote_hostname']
+	remote_username = config['REMOTE HOST']['remote_username']
 
-	build_path 			 	= config['PATHS']['build_path']
-	test_suite_path 	 	= config['PATHS']['test_suite_path']
-	lit_path 			 	= config['PATHS']['lit_path']
-	remote_hostname 	 	= config['REMOTE HOST']['remote_hostname']
-	remote_username 	 	= config['REMOTE HOST']['remote_username']
-	cmake_toolchain_file 	= config['FILES']['cmake_toolchain_file']
+	for i in range(1, toolchains_number + 1):
+		toolchain_section = "TOOLCHAIN " + str(i)
+		if toolchain_section not in config:
+			print("config: error: wrong 'toolchains_number': there is no", toolchain_section)
+			exit(0)
+		toolchains_dict.update({toolchain_section: config[toolchain_section]})
+		if 'test_suite_subdirs_file' in config[toolchain_section]:
+			test_suite_subdirs = \
+				get_test_suite_subdirs(config[toolchain_section]['test_suite_subdirs_file'])
+			toolchains_dict[toolchain_section].update({'test_suite_subdirs': test_suite_subdirs})
+		else:
+			toolchains_dict[toolchain_section].update({'test_suite_subdirs': 'default'})
+		if 'res_file' in config[toolchain_section]:
+			res_file = config[toolchain_section]['res_file']
+			toolchains_dict[toolchain_section].update({'res_file': res_file})
+		else:
+			toolchains_dict[toolchain_section].update({'res_file': 'default'})
 
 
 def get_test_suite_subdirs(subdirs_filename):
@@ -70,9 +83,8 @@ def get_test_suite_subdirs(subdirs_filename):
 	return test_suite_subdirs
 
 
-def build_tests(build_path, test_suite_path, cmake_toolchain_file,
-				remote_host, test_suite_subdirs,
-				build_threads):
+def build_tests(build_path, cmake_toolchain_file, test_suite_subdirs, test_suite_path, 
+				remote_host, build_threads):
 	cmake_defines = "-DTEST_SUITE_BENCHMARKING_ONLY=ON" \
 				  + " -DMULTITHREADED_BUILD=" + str(build_threads) \
 				  + " -DTEST_SUITE_REMOTE_HOST=" + remote_host \
@@ -93,11 +105,12 @@ def sync_build_dir_with_board(remote_hostname, remote_username, build_path):
 	client = paramiko.SSHClient()
 	client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 	client.connect(hostname = remote_hostname, username = remote_username)
-	client.exec_command("sudo mkdir -p -m=777 " + get_start_of_build_dir(build_path))
+	client.exec_command("sudo mkdir -p -m=777 " + \
+						get_start_of_build_dir(build_path))
 	os.system("cd " + build_path + " && " + "ninja rsync")
 
 
-def get_start_of_build_dir(build_path):
+def get_start_of_build_dir(build_path): #TODO: decide how to fix this "костыль"
 	splited_path = build_path.split("/", 3)
 	if (splited_path[0] == "~"):
 		print("error: use only absolute paths for 'build_path'")
@@ -107,7 +120,7 @@ def get_start_of_build_dir(build_path):
 		start_build_dir += splited_path[i] + "/"
 	return start_build_dir
 
-def lit_run(build_path, lit_path, res_file, run_threads, nruns):
+def lit_run(build_path, res_file, lit_path, run_threads, nruns):
 	if (nruns == 1):
 		single_lit_run(build_path, lit_path, res_file, run_threads)
 		return
@@ -126,6 +139,13 @@ def single_lit_run(build_path, lit_path, res_file, run_threads):
 def make_nres_filename(res_file, n):
 	dot_last_place = res_file.rfind(".")
 	return res_file[:dot_last_place] + f"[{n}]" + res_file[dot_last_place:]
+
+
+def get_res_file(toolchain_name, res_file):
+	if res_file == 'default':
+		return toolchain_name.replace(" ", "-") + ".json"
+	else:
+		return res_file
 
 
 def main():
@@ -147,13 +167,32 @@ def main():
 	get_values_from_config(args.config)
 
 	if (not args.run_only):
-		build_tests(build_path, test_suite_path, cmake_toolchain_file,
-					remote_username + "@" + remote_hostname, test_suite_subdirs,
-					build_threads)
+		for toolchain_section_name in toolchains_dict.keys():
+			toolchain_section = toolchains_dict[toolchain_section_name]
+			print("\nStart building ", '"', toolchain_section["toolchain_name"], '"', ":",
+				  sep = "", end = "\n\n")
+			build_tests(toolchain_section["build_path"],
+				toolchain_section["cmake_toolchain_file"],
+				toolchain_section["test_suite_subdirs"],
+				test_suite_path, remote_username + "@" + remote_hostname,
+				build_threads)
 	if (not args.no_rsync):
-		sync_build_dir_with_board(remote_hostname, remote_username, build_path)
+		for toolchain_section_name in toolchains_dict.keys():
+			toolchain_section = toolchains_dict[toolchain_section_name]
+			print("\nStart synchronization ", '"', toolchain_section["toolchain_name"], '"', ":",
+				  sep = "", end = "\n\n")
+			sync_build_dir_with_board(remote_hostname, remote_username,
+				toolchain_section["build_path"])
 	if (not args.build_only):
-		lit_run (build_path, lit_path, res_file, run_threads, args.nruns)
+		for toolchain_section_name in toolchains_dict.keys():
+			toolchain_section = toolchains_dict[toolchain_section_name]
+			print("\nStart running ", '"', toolchain_section["toolchain_name"], '"', ":",
+				  sep = "", end = "\n\n")
+			lit_run (toolchain_section["build_path"],
+				get_res_file(toolchain_section["toolchain_name"],
+					toolchain_section["res_file"]),
+				lit_path, run_threads,
+				args.nruns)
 
 if __name__ == '__main__':
     main()

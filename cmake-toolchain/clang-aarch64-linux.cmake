@@ -2,7 +2,7 @@ set(CMAKE_SYSTEM_NAME Linux )
 set(CMAKE_SYSTEM_PROCESSOR aarch64)
 set(triple aarch64-linux-gnu )
 
-set(OPT_FLAG "-O2")
+set(OPT_FLAG "-O0")
 
 set(CMAKE_C_FLAGS "-static ${OPT_FLAG}" CACHE STRING "" FORCE)
 set(CMAKE_C_FLAGS_RELEASE "-static ${OPT_FLAG}" CACHE STRING "" FORCE)
