@@ -57,22 +57,24 @@ def get_values_from_config(config_file): #TODO: use config.get()
 	remote_username = config['REMOTE HOST']['remote_username']
 
 	for i in range(1, toolchains_number + 1):
-		toolchain_section = "TOOLCHAIN " + str(i)
-		if toolchain_section not in config:
-			print("config: error: wrong 'toolchains_number': there is no", toolchain_section)
+		toolchain_section_name = "TOOLCHAIN " + str(i)
+		if toolchain_section_name not in config:
+			print("config: error: wrong 'toolchains_number': there is no", toolchain_section_name)
 			exit(0)
-		toolchains_dict.update({toolchain_section: config[toolchain_section]})
-		if 'test_suite_subdirs_file' in config[toolchain_section]:
+		toolchains_dict.update({toolchain_section_name: config[toolchain_section_name]})
+		if 'toolchain_name' not in config[toolchain_section_name]:
+			toolchains_dict[toolchain_section_name].update({'toolchain_name': toolchain_section_name})
+		if 'test_suite_subdirs_file' in config[toolchain_section_name]:
 			test_suite_subdirs = \
-				get_test_suite_subdirs(config[toolchain_section]['test_suite_subdirs_file'])
-			toolchains_dict[toolchain_section].update({'test_suite_subdirs': test_suite_subdirs})
+				get_test_suite_subdirs(config[toolchain_section_name]['test_suite_subdirs_file'])
+			toolchains_dict[toolchain_section_name].update({'test_suite_subdirs': test_suite_subdirs})
 		else:
-			toolchains_dict[toolchain_section].update({'test_suite_subdirs': 'default'})
-		if 'res_file' in config[toolchain_section]:
-			res_file = config[toolchain_section]['res_file']
-			toolchains_dict[toolchain_section].update({'res_file': res_file})
+			toolchains_dict[toolchain_section_name].update({'test_suite_subdirs': 'default'})
+		if 'res_file' in config[toolchain_section_name]:
+			res_file = config[toolchain_section_name]['res_file']
+			toolchains_dict[toolchain_section_name].update({'res_file': res_file})
 		else:
-			toolchains_dict[toolchain_section].update({'res_file': 'default'})
+			toolchains_dict[toolchain_section_name].update({'res_file': 'default'})
 
 
 def get_test_suite_subdirs(subdirs_filename):

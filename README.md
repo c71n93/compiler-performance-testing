@@ -2,7 +2,7 @@
 
 This python script can help to build and run [llvm-test-suite](https://llvm.org/docs/TestSuiteGuide.html) on board easily.
 
-###### Table of contents
+##### Table of contents
 
 1. [Requirements for proper work](#Requirements-for-proper-work)
 2. [Comand-line options](#Comand-line-options)
@@ -37,60 +37,63 @@ There is some useful comand-line options:
 
 Config file - is a file with required variables. It can be passed to the script with option `--config CONFIG`.
 
-Structure of config file:
+#### Structure of config file:
 ```
-[PATHS]
-test_suite_path = /path/to/test-suite
-lit_path = /path/to/llvm-lit
+[PATHS AND FILES] #required
+test_suite_path = /path/to/test-suite/                                  #required
+lit_path = /path/to/llvm-lit											#required
+builds_dir = /path/to/directory/with/build/directories/                 #required
+test_suite_subdirs_file = path/to/file/with/test-suite/subdirs/list.txt #optional
+results_path = /path/to/directory/with/test/results/                    #optional
 
-[REMOTE HOST]
-remote_hostname = 255.255.255.255
-remote_username = username
+[REMOTE HOST] #required
+remote_hostname = 255.255.255.255   #required
+remote_username = username          #required
 
-[MULTITHREADING]
-build_threads = 4
-run_threads = 4
+[MULTITHREADING] #optional
+build_threads = 4 #optional
+run_threads = 4   #optional
 
-[TOOLCHAINS]
-toolchains_number = 3
+[TOOLCHAIN 1] #required
+toolchain_name = gcc-O0                                                 #optional
+build_path = /path/to/build/directory                                   #optional
+cmake_toolchain_file = cmake-toolchain/gcc-aarch64-linux.cmake          #required
 
-[TOOLCHAIN 1]
-toolchain_name = gcc-O0
-build_path = /path/to/build/directory
-cmake_toolchain_file = cmake-toolchain/gcc
-test_suite_subdirs_file = path/to/file/with/test-suite/subdirs/list
-res_file = /path/to/file/with/test/results.json
-
-[TOOLCHAIN 2]
+[TOOLCHAIN 2] #optional
 ...
 
-[TOOLCHAIN 3]
+[TOOLCHAIN 3] #optional
 ...
 ```
 *You can just copy it and change necessary values*
 
-Meaning of variables:
+#### Meaning of variables:
 
-**[PATHS]**
-- `build_path` *(required)* - path to build directory (tests will be compiled there)
-*Important note: use build directory only into `/home/` directory*
+**[PATHS AND FILES]** *(required section)*
 - `test_suite_path` *(required)* - path to directory with [test-suite](https://github.com/llvm/llvm-test-suite.git) sources
 - `lit_path` *(required)* - path to [llvm-lit](https://llvm.org/docs/TestSuiteGuide.html) runner tool
+- `build_dir` *(required)* - path to directory where will be build directories for each toolchain
+
+*Important note: use build directory only into `/home/` directory*
+- `test_suite_subdirs_file` *(default = [runs all tests])* - path to [file with test-suite subdirs list](#Test-suite-subdirs-file)
+- `results_path` *(default = ".")* - path to directory where results will be saved
 
 *Use only absolute paths*
 
-**FILES**
-- `cmake_toolchain_file` *(required)* - path to [cmake-toolchain file](#Cmake-toolchain-file)
-- `res_file` *(default = "result.json")* - path test results file in *json* format
-- `test_suite_subdirs_file` *(default = [runs all tests])* - path to [file with test-suite subdirs list](#Test-suite-subdirs-file)
-
-**REMOTE HOST**
+**[REMOTE HOST]** *(required section)*
 - `remote_hostname` *(required)* - IP adress of the board
 - `remote_username` *(required)* - board user name
 
-**MULTITHREADING**
+**[MULTITHREADING]** *(optional section)*
 - `build_threads` *(default = 1)* - the number of threads that are used to build tests
 - `run_threads` *(default = 1)* - the number of threads that are used to run tests
+
+**[TOOLCHAIN *N*]** *(required at least one section)*
+- `toolchain_name` *(default = [cmake toolchain filename])* - this name will be used to generate build directories and result files name; if not specified, will be taken from the cmake toolchain filename
+- `build_path` *(default = "`builds_dir`"/"`toolchain_name`"/)* - path to build directory (tests will be compiled there)
+
+*Important note: use build directory only into `/home/` directory*
+- `cmake_toolchain_file` *(required)* - path to [cmake-toolchain file](#Cmake-toolchain-file)
 
 **This file is passed via [comand-line opitons](#Comand-line-options) by `--config` option**
 
