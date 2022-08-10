@@ -40,24 +40,24 @@ Config file - is a file with required variables. It can be passed to the script 
 #### Structure of config file:
 ```
 [PATHS AND FILES] #required
-test_suite_path = /path/to/test-suite/                                  #required
-lit_path = /path/to/llvm-lit											#required
-builds_dir = /path/to/directory/with/build/directories/                 #required
+test_suite_path = /path/to/test-suite/ #required
+lit_path = /path/to/llvm-lit #required
+builds_dir = /path/to/directory/with/build/directories/ #required
 test_suite_subdirs_file = path/to/file/with/test-suite/subdirs/list.txt #optional
-results_path = /path/to/directory/with/test/results/                    #optional
+results_path = /path/to/directory/with/test/results/ #optional
 
 [REMOTE HOST] #required
-remote_hostname = 255.255.255.255   #required
-remote_username = username          #required
+remote_hostname = 255.255.255.255 #required
+remote_username = username #required
 
 [MULTITHREADING] #optional
 build_threads = 4 #optional
-run_threads = 4   #optional
+run_threads = 4 #optional
 
 [TOOLCHAIN 1] #required
-toolchain_name = gcc-O0                                                 #optional
-build_path = /path/to/build/directory                                   #optional
-cmake_toolchain_file = cmake-toolchain/gcc-aarch64-linux.cmake          #required
+toolchain_name = gcc-O0 #optional
+build_path = /path/to/build/directory #optional
+cmake_toolchain_file = cmake-toolchain/gcc-aarch64-linux.cmake #required
 
 [TOOLCHAIN 2] #optional
 ...
