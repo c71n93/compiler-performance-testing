@@ -38,11 +38,12 @@ There is some useful comand-line options:
 Config file - is a file with required variables. It can be passed to the script with option `--config CONFIG`.
 
 #### Structure of config file:
-```
+```ini
 [PATHS AND FILES] #required
 test_suite_path = /path/to/test-suite/ #required
 lit_path = /path/to/llvm-lit #required
 builds_dir = /path/to/directory/with/build/directories/ #required
+sysroot_path = /path/to/headers/and/libraries #optional
 test_suite_subdirs_file = path/to/file/with/test-suite/subdirs/list.txt #optional
 results_path = /path/to/directory/with/test/results/ #optional
 
@@ -72,13 +73,10 @@ cmake_toolchain_file = cmake-toolchain/gcc-aarch64-linux.cmake #required
 **[PATHS AND FILES]** *(required section)*
 - `test_suite_path` *(required)* - path to directory with [test-suite](https://github.com/llvm/llvm-test-suite.git) sources
 - `lit_path` *(required)* - path to [llvm-lit](https://llvm.org/docs/TestSuiteGuide.html) runner tool
-- `build_dir` *(required)* - path to directory where will be build directories for each toolchain
-
-*Important note: use build directory only into `/home/` directory*
+- `build_dir` *(required)* - path to directory where will be build directories for each toolchain *Important note: use build directory only into `/home/` directory. Use only absolute paths*
+- `sysroot_path` *(default = [default sysroot]* - path to sysroot, to be passed via `--sysroot` compiler option
 - `test_suite_subdirs_file` *(default = [runs all tests])* - path to [file with test-suite subdirs list](#Test-suite-subdirs-file)
 - `results_path` *(default = ".")* - path to directory where results will be saved
-
-*Use only absolute paths*
 
 **[REMOTE HOST]** *(required section)*
 - `remote_hostname` *(required)* - IP adress of the board
@@ -90,9 +88,7 @@ cmake_toolchain_file = cmake-toolchain/gcc-aarch64-linux.cmake #required
 
 **[TOOLCHAIN *N*]** *(required at least one section)*
 - `toolchain_name` *(default = [cmake toolchain filename])* - this name will be used to generate build directories and result files name; if not specified, will be taken from the cmake toolchain filename
-- `build_path` *(default = "`builds_dir`"/"`toolchain_name`"/)* - path to build directory (tests will be compiled there)
-
-*Important note: use build directory only into `/home/` directory*
+- `build_path` *(default = "`builds_dir`"/"`toolchain_name`"/)* - path to build directory (tests will be compiled there) *Important note: use build directory only into `/home/` directory. Use only absolute paths*
 - `cmake_toolchain_file` *(required)* - path to [cmake-toolchain file](#Cmake-toolchain-file)
 
 **This file is passed via [comand-line opitons](#Comand-line-options) by `--config` option**
@@ -101,23 +97,29 @@ cmake_toolchain_file = cmake-toolchain/gcc-aarch64-linux.cmake #required
 This file is needed for cross-compiling. You can read about cmake-toolchain file [here](https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html).
 
 Here is an example of cmake-toolchain file to cross-compiling with *gcc* under *aarch64*:
-```
+```cmake
 set(CMAKE_SYSTEM_NAME Linux )
 set(CMAKE_SYSTEM_PROCESSOR aarch64)
 set(triple aarch64-linux-gnu )
 
+# This condition and SYSROOT_FLAG variable needs to support sysroot variable from config.
+# So, use it if you want this functionality.
+if(DEFINED SYSROOT)
+	set(SYSROOT_FLAG "--sysroot ${SYSROOT}")
+endif()
+
 set(OPT_FLAG "-O0")
 
-set(CMAKE_C_FLAGS "-static ${OPT_FLAG}" CACHE STRING "" FORCE)
-set(CMAKE_C_FLAGS_RELEASE "-static ${OPT_FLAG}" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS "-static ${OPT_FLAG} ${SYSROOT_FLAG}" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS_RELEASE "-static ${OPT_FLAG} ${SYSROOT_FLAG}" CACHE STRING "" FORCE)
 
-set(CMAKE_CXX_FLAGS "${OPT_FLAG}" CACHE STRING "" FORCE)
-set(CMAKE_CXX_FLAGS_RELEASE "${OPT_FLAG}" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS "${OPT_FLAG} ${SYSROOT_FLAG}" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_RELEASE "${OPT_FLAG} ${SYSROOT_FLAG}" CACHE STRING "" FORCE)
 
-set(CMAKE_C_COMPILER /usr/bin/aarch64-linux-gnu-gcc CACHE STRING "" FORCE)
+set(CMAKE_C_COMPILER /usr/bin/clang CACHE STRING "" FORCE)
 set(CMAKE_C_COMPILER_TARGET ${triple})
-set(CMAKE_CXX_COMPILER /usr/bin/aarch64-linux-gnu-g++ CACHE STRING "" FORCE)
-set(CMAKE_C_COMPILER_TARGET ${triple})
+set(CMAKE_CXX_COMPILER /usr/bin/clang++ CACHE STRING "" FORCE)
+set(CMAKE_CXX_COMPILER_TARGET ${triple})
 ```
 *This example and others for clang and OpenArkCompiler are in the folder `cmake-toolchain`*
 

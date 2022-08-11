@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #TODO: stop script if error is occured while building
 #TODO: stop script if error is occured while compiling
@@ -15,6 +15,7 @@ import re
 test_suite_path		= ""
 lit_path			= ""
 builds_dir			= ""
+sysroot_path		= "default"
 test_suite_subdirs 	= "default"
 results_path		= "default"
 remote_hostname		= ""
@@ -41,7 +42,7 @@ def check_args(args):
 def get_values_from_config(config_file): #TODO: use config.get()
 	global test_suite_path, lit_path, remote_hostname, remote_username, \
 		build_threads, run_threads, toolchains_dict, test_suite_subdirs, \
-		builds_dir 
+		builds_dir, sysroot_path
 
 	config = configparser.ConfigParser()
 	config.read(config_file)
@@ -51,6 +52,8 @@ def get_values_from_config(config_file): #TODO: use config.get()
 			build_threads = config["MULTITHREADING"]["build_threads"]
 		if "run_threads" in config['MULTITHREADING']:
 			run_threads = config["MULTITHREADING"]["run_threads"]
+	if "sysroot_path" in config["PATHS AND FILES"]:
+		sysroot_path = config["PATHS AND FILES"]["sysroot_path"]
 	if "test_suite_subdirs_file" in config["PATHS AND FILES"]:
 		test_suite_subdirs = get_test_suite_subdirs(
 			config["PATHS AND FILES"]["test_suite_subdirs_file"])
@@ -71,13 +74,15 @@ def get_values_from_config(config_file): #TODO: use config.get()
 		toolchains_dict.update({toolchain_section_name: 
 			config[toolchain_section_name]})
 		toolchain_section = toolchains_dict[toolchain_section_name]
+		toolchain_section["cmake_toolchain_file"] = os.path.abspath(
+			config[toolchain_section_name]["cmake_toolchain_file"])
 		if "toolchain_name" not in config[toolchain_section_name]:
 			toolchain_name = \
 				get_toolchain_name(toolchain_section["cmake_toolchain_file"])
 			toolchain_section.update({'toolchain_name': toolchain_name})
 		if "build_path" not in config[toolchain_section_name]:
 			build_path = builds_dir + "/" + toolchain_section["toolchain_name"]
-			toolchain_section.update({'build_path': build_path})
+			toolchain_section.update({"build_path": build_path})
 		toolchain_section.update({"res_file": get_res_file(
 			toolchain_section["toolchain_name"], results_path)})
 		section_num += 1
@@ -114,6 +119,8 @@ def build_tests(build_path, cmake_toolchain_file, test_suite_subdirs,
 				  + " -DCMAKE_TOOLCHAIN_FILE:FILEPATH=" + cmake_toolchain_file
 	if (test_suite_subdirs != "default"):
 		cmake_defines += " -DTEST_SUITE_SUBDIRS=" + test_suite_subdirs
+	if (sysroot_path != "default"):
+		cmake_defines += " -DSYSROOT=" + sysroot_path
 	cmake_options = "-G Ninja" \
 				  + " " + cmake_defines \
 				  + " " + test_suite_path
@@ -122,6 +129,12 @@ def build_tests(build_path, cmake_toolchain_file, test_suite_subdirs,
 	cd_to_build_path = "cd " + build_path
 	os.system(cd_to_build_path + " && " + "cmake " + cmake_options)
 	os.system(cd_to_build_path + " && " + "ninja")
+
+
+def setup_environment_variables():
+	sysroot = "/home/roman/CS/OpenArkCompiler/tools/gcc-linaro-7.5.0/aarch64-linux-gnu/libc"
+	os.system("export SYSROOT=/home/roman/CS/OpenArkCompiler/tools/gcc-linaro-7.5.0/aarch64-linux-gnu/libc")
+	os.system("${SYSROOT}")
 
 
 def sync_build_dir_with_board(remote_hostname, remote_username, build_path):
@@ -168,6 +181,7 @@ def print_config_variables():
 	print("test_suite_path =", test_suite_path)
 	print("lit_path =", lit_path)
 	print("builds_dir =", builds_dir)
+	print("sysroot_path =", sysroot_path)
 	print("test_suite_subdirs =", test_suite_subdirs)
 	print("results_path =", results_path)
 	print("remote_hostname =", remote_hostname)
