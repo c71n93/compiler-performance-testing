@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+#TODO: make auto generation of ssh-key
 #TODO: stop script if error is occured while building
 #TODO: stop script if error is occured while compiling
 #TODO: stop script if error is occured while syncing
@@ -199,7 +200,7 @@ def print_config_variables():
 
 def main():
 	parser = argparse.ArgumentParser("options")
-	parser.add_argument("--conf", dest="config", required=True,
+	parser.add_argument("--conf", dest="config", default="config.ini",
 		help="config file")
 	parser.add_argument("--nruns", dest="nruns", type=int, default=1,
 		help="number of runs (natural number)")
