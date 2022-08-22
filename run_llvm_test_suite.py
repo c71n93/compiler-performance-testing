@@ -115,6 +115,7 @@ def get_res_file(toolchain_name, results_path):
 def build_tests(build_path, cmake_toolchain_file, test_suite_subdirs, 
 				test_suite_path, remote_host, build_threads):
 	cmake_defines = "-DTEST_SUITE_BENCHMARKING_ONLY=ON" \
+				  + " -DTEST_SUITE_COLLECT_CODE_SIZE=OFF" \
 				  + " -DMULTITHREADED_BUILD=" + str(build_threads) \
 				  + " -DTEST_SUITE_REMOTE_HOST=" + remote_host \
 				  + " -DCMAKE_TOOLCHAIN_FILE:FILEPATH=" + cmake_toolchain_file
@@ -130,12 +131,6 @@ def build_tests(build_path, cmake_toolchain_file, test_suite_subdirs,
 	cd_to_build_path = "cd " + build_path
 	os.system(cd_to_build_path + " && " + "cmake " + cmake_options)
 	os.system(cd_to_build_path + " && " + "ninja")
-
-
-def setup_environment_variables():
-	sysroot = "/home/roman/CS/OpenArkCompiler/tools/gcc-linaro-7.5.0/aarch64-linux-gnu/libc"
-	os.system("export SYSROOT=/home/roman/CS/OpenArkCompiler/tools/gcc-linaro-7.5.0/aarch64-linux-gnu/libc")
-	os.system("${SYSROOT}")
 
 
 def sync_build_dir_with_board(remote_hostname, remote_username, build_path):
@@ -200,7 +195,7 @@ def print_config_variables():
 
 def main():
 	parser = argparse.ArgumentParser("options")
-	parser.add_argument("--conf", dest="config", default="config.ini",
+	parser.add_argument("--config", dest="config", default="config.ini",
 		help="config file")
 	parser.add_argument("--nruns", dest="nruns", type=int, default=1,
 		help="number of runs (natural number)")

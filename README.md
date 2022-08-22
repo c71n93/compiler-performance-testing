@@ -9,7 +9,8 @@ This python script can help to build and run [llvm-test-suite](https://llvm.org/
 3. [Config file](#Config-file)
 4. [Cmake-toolchain file](#Cmake-toolchain-file)
 5. [Test-suite subdirs file](#Test-suite-subdirs-file)
-6. [Results](#Results)
+6. [Running tests with docker](#Running-tests-with-docker)
+7. [Results](#Results)
 
 ## Requirements for proper work
 
@@ -169,6 +170,12 @@ SingleSource/Benchmarks/Shootout/
 Test-suite subdirs file is a list of paths to individual benchmarks separated by `;`. 
 
 **This file is passed via [config file](#Config-file) by `test_suite_subdirs_file` variable**
+
+## Running tests with docker
+
+To run tests more easily, it is possible to use a docker container.
+
+*To be continued*
 
 ## Results
 
