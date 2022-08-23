@@ -1,4 +1,4 @@
-FROM ubuntu-python-lnt-suite-clang-gcc-cmake-maple-2
+FROM ubuntu-python-lnt-suite-clang-gcc-cmake-maple-ssh-1
 
 WORKDIR /home
 
@@ -14,8 +14,9 @@ COPY . /home/compiler-performance-testing
 #install lnt
 # RUN mkdir -p /home/lnt-venv && virtualenv /home/lnt-venv && git clone https://github.com/llvm/llvm-lnt.git /home/lnt && ~/lnt-venv/bin/python ~/lnt/setup.py develop
 
-#clone llvm-test-suite
+#clone and set llvm-test-suite
 # RUN git clone https://github.com/llvm/llvm-test-suite.git test-suite
+# COPY ./docker-settings/lit.cfg /home/test-suite/
 
 #install compilers
 # RUN apt-get update && apt-get -y install clang && apt-get -y install gcc-aarch64-linux-gnu && apt-get -y install g++-aarch64-linux-gnu
@@ -27,5 +28,8 @@ COPY . /home/compiler-performance-testing
 #install packages for OpenArkCompiler
 # RUN apt-get update && apt-get install -y lsb-release && apt install -y libtinfo5
 
-#run script
-# ENTRYPOINT ["./run_llvm_test_suite.py"]
+#install rsync
+# RUN apt-get update && apt-get install -y rsync
+
+#generate SSH key pair
+# RUN ["/bin/bash", "-c", "ssh-keygen -q -t rsa -N '' -f /root/.ssh/id_rsa <<<y >/dev/null 2>&1"]

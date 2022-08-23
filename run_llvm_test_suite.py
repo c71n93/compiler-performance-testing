@@ -43,7 +43,7 @@ def check_args(args):
 def get_values_from_config(config_file): #TODO: use config.get()
 	global test_suite_path, lit_path, remote_hostname, remote_username, \
 		build_threads, run_threads, toolchains_dict, test_suite_subdirs, \
-		builds_dir, sysroot_path
+		builds_dir, sysroot_path, results_path
 
 	config = configparser.ConfigParser()
 	config.read(config_file)
@@ -133,6 +133,11 @@ def build_tests(build_path, cmake_toolchain_file, test_suite_subdirs,
 	os.system(cd_to_build_path + " && " + "ninja")
 
 
+def setup_ssh_key_connection(remote_hostname, remote_username):
+	os.system("ssh -o StrictHostKeyChecking=no " \
+		+ remote_username + "@" + remote_hostname + " :")
+
+
 def sync_build_dir_with_board(remote_hostname, remote_username, build_path):
 	client = paramiko.SSHClient()
 	client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -162,8 +167,8 @@ def lit_run(build_path, res_file, lit_path, run_threads, nruns):
 
 
 def single_lit_run(build_path, lit_path, res_file, run_threads):
-	lit_options = "-vv -j " + str(run_threads) + " -o " \
-				+ res_file + " " + build_path
+	lit_options = "-vv -j " + str(run_threads) \
+		+ " -o " + res_file + " " + build_path
 
 	os.system(lit_path + " " + lit_options)
 
@@ -171,6 +176,11 @@ def single_lit_run(build_path, lit_path, res_file, run_threads):
 def make_nres_filename(res_file, n):
 	dot_last_place = res_file.rfind(".")
 	return res_file[:dot_last_place] + f"[{n}]" + res_file[dot_last_place:]
+
+
+def make_results_path_dir(results_path):
+	if results_path != "default":
+		os.system("mkdir -p " + results_path)
 
 
 def print_config_variables():
@@ -227,6 +237,7 @@ def main():
 				test_suite_subdirs, test_suite_path,
 				remote_username + "@" + remote_hostname, build_threads)
 	if (not args.no_rsync):
+		setup_ssh_key_connection(remote_hostname, remote_username)
 		for toolchain_section_name in toolchains_dict.keys():
 			toolchain_section = toolchains_dict[toolchain_section_name]
 			print("\nStart synchronization ", '"', 
@@ -235,6 +246,8 @@ def main():
 			sync_build_dir_with_board(remote_hostname, remote_username,
 				toolchain_section["build_path"])
 	if (not args.build_only):
+		setup_ssh_key_connection(remote_hostname, remote_username)
+		make_results_path_dir(results_path)
 		for toolchain_section_name in toolchains_dict.keys():
 			toolchain_section = toolchains_dict[toolchain_section_name]
 			print("\nStart running ", '"', toolchain_section["toolchain_name"],
