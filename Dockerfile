@@ -3,7 +3,6 @@ FROM korostinskiyr/compiler_performance_testing:manual
 WORKDIR /home
 
 # copy script and all required files
-RUN rm -r /home/compiler-performance-testing
 COPY . /home/compiler-performance-testing
 
 # install required packages for running llvm-test-suite
@@ -60,9 +59,8 @@ WORKDIR /home
 # generate SSH key pair
 RUN apt-get update && \
 	apt-get install sshpass
-RUN ["/bin/bash", "-c",
-	"ssh-keygen -q -t rsa -N '' -f /root/.ssh/id_rsa <<<y >/dev/null 2>&1"]
+RUN ["/bin/bash", "-c", "ssh-keygen -q -t rsa -N '' -f /root/.ssh/id_rsa <<<y >/dev/null 2>&1"]
 
 #execute script
-WORKDIR /home/compiler-performance-testing
+WORKDIR /home/compiler-performance-testing/docker-settings
 ENTRYPOINT ["./docker-script.py"]

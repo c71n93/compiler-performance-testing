@@ -55,7 +55,7 @@ sysroot_path = /path/to/headers/and/libraries #optional
 test_suite_subdirs_file = path/to/file/with/test-suite/subdirs/list.txt #optional
 results_path = /path/to/directory/with/test/results/ #optional
 
-[REMOTE HOST] #required
+[REMOTE HOST] #optional
 remote_hostname = 255.255.255.255 #optional
 remote_username = username #optional
 remote_password = password #optional

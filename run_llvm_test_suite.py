@@ -57,12 +57,13 @@ def get_values_from_config(config_file): #TODO: use config.get()
 			config["PATHS AND FILES"]["test_suite_subdirs_file"])
 	if "results_path" in config["PATHS AND FILES"]:
 		results_path = config["PATHS AND FILES"]["results_path"]
-	if "remote_hostname" in config["REMOTE HOST"]:
-		remote_hostname = config["REMOTE HOST"]["remote_hostname"]
-	if "remote_username" in config["REMOTE HOST"]:
-		remote_username = config["REMOTE HOST"]["remote_username"]
-	if "remote_password" in config["REMOTE HOST"]:
-		remote_password = config["REMOTE HOST"]["remote_password"]
+	if "REMOTE HOST" in config:
+		if "remote_hostname" in config["REMOTE HOST"]:
+			remote_hostname = config["REMOTE HOST"]["remote_hostname"]
+		if "remote_username" in config["REMOTE HOST"]:
+			remote_username = config["REMOTE HOST"]["remote_username"]
+		if "remote_password" in config["REMOTE HOST"]:
+			remote_password = config["REMOTE HOST"]["remote_password"]
 	test_suite_path = config["PATHS AND FILES"]["test_suite_path"]
 	lit_path		= config["PATHS AND FILES"]["lit_path"]
 	builds_dir		= config["PATHS AND FILES"]["builds_dir"]
