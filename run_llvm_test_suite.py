@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 
-#TODO: stop script if error is occured while building
-#TODO: stop script if error is occured while compiling
-#TODO: stop script if error is occured while syncing
-
 import sys
 import os
 import paramiko
@@ -18,8 +14,9 @@ builds_dir			= ""
 sysroot_path		= "default"
 test_suite_subdirs 	= "default"
 results_path		= "default"
-remote_hostname		= ""
-remote_username		= ""
+remote_hostname		= "default"
+remote_username		= "default"
+remote_password		= "default"
 build_threads		= 1
 run_threads			= 1
 toolchains_dict		= {}
@@ -39,10 +36,11 @@ def check_args(args):
 		exit(1)
 
 
+#this function use global variables
 def get_values_from_config(config_file): #TODO: use config.get()
 	global test_suite_path, lit_path, remote_hostname, remote_username, \
 		build_threads, run_threads, toolchains_dict, test_suite_subdirs, \
-		builds_dir, sysroot_path
+		builds_dir, sysroot_path, results_path, remote_password
 
 	config = configparser.ConfigParser()
 	config.read(config_file)
@@ -59,11 +57,15 @@ def get_values_from_config(config_file): #TODO: use config.get()
 			config["PATHS AND FILES"]["test_suite_subdirs_file"])
 	if "results_path" in config["PATHS AND FILES"]:
 		results_path = config["PATHS AND FILES"]["results_path"]
+	if "remote_hostname" in config["REMOTE HOST"]:
+		remote_hostname = config["REMOTE HOST"]["remote_hostname"]
+	if "remote_username" in config["REMOTE HOST"]:
+		remote_username = config["REMOTE HOST"]["remote_username"]
+	if "remote_password" in config["REMOTE HOST"]:
+		remote_password = config["REMOTE HOST"]["remote_password"]
 	test_suite_path = config["PATHS AND FILES"]["test_suite_path"]
 	lit_path		= config["PATHS AND FILES"]["lit_path"]
 	builds_dir		= config["PATHS AND FILES"]["builds_dir"]
-	remote_hostname = config["REMOTE HOST"]["remote_hostname"]
-	remote_username = config["REMOTE HOST"]["remote_username"]
 
 	toolchain_section_name = "TOOLCHAIN 1"
 	section_num = 1
@@ -111,9 +113,23 @@ def get_res_file(toolchain_name, results_path):
 		return results_path + "/" + result_filename
 
 
-def build_tests(build_path, cmake_toolchain_file, test_suite_subdirs, 
-				test_suite_path, remote_host, build_threads):
+#this function use global variables
+def build_all_toolchains():
+	for toolchain_section_name in toolchains_dict.keys():
+		toolchain_section = toolchains_dict[toolchain_section_name]
+		print("\nStart building ", '"', toolchain_section["toolchain_name"],
+			'"', ":", sep = "", end = "\n\n")
+		build_single_toolchain(toolchain_section["build_path"],
+			toolchain_section["cmake_toolchain_file"],
+			test_suite_subdirs, test_suite_path,
+			remote_username + "@" + remote_hostname, build_threads)
+
+
+def build_single_toolchain(build_path, cmake_toolchain_file, 
+								test_suite_subdirs, test_suite_path, 
+								remote_host, build_threads):
 	cmake_defines = "-DTEST_SUITE_BENCHMARKING_ONLY=ON" \
+				  + " -DTEST_SUITE_COLLECT_CODE_SIZE=OFF" \
 				  + " -DMULTITHREADED_BUILD=" + str(build_threads) \
 				  + " -DTEST_SUITE_REMOTE_HOST=" + remote_host \
 				  + " -DCMAKE_TOOLCHAIN_FILE:FILEPATH=" + cmake_toolchain_file
@@ -131,17 +147,24 @@ def build_tests(build_path, cmake_toolchain_file, test_suite_subdirs,
 	os.system(cd_to_build_path + " && " + "ninja")
 
 
-def setup_environment_variables():
-	sysroot = "/home/roman/CS/OpenArkCompiler/tools/gcc-linaro-7.5.0/aarch64-linux-gnu/libc"
-	os.system("export SYSROOT=/home/roman/CS/OpenArkCompiler/tools/gcc-linaro-7.5.0/aarch64-linux-gnu/libc")
-	os.system("${SYSROOT}")
+#this function use global variables
+def sync_all_toolchains_build_dirs_with_board():
+	for toolchain_section_name in toolchains_dict.keys():
+		toolchain_section = toolchains_dict[toolchain_section_name]
+		print("\nStart synchronization ", '"', 
+			toolchain_section["toolchain_name"],'"', ":", sep = "", 
+			end = "\n\n")
+		sync_single_toolchain_build_dir_with_board(remote_hostname,
+			remote_username, remote_password, toolchain_section["build_path"])
 
 
-def sync_build_dir_with_board(remote_hostname, remote_username, build_path):
+def sync_single_toolchain_build_dir_with_board(remote_hostname, remote_username,
+											   remote_password, build_path):
 	client = paramiko.SSHClient()
 	client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 	client.connect(hostname = remote_hostname, username = remote_username)
-	client.exec_command("sudo mkdir -p -m=777 " + \
+	client.exec_command("echo '" + remote_password + \
+						"' | sudo mkdir -p -m=777 " + \
 						get_start_of_build_dir(build_path))
 	os.system("cd " + build_path + " && " + "ninja rsync")
 
@@ -156,18 +179,32 @@ def get_start_of_build_dir(build_path): #TODO: decide how to fix this
 		start_build_dir += splited_path[i] + "/"
 	return start_build_dir
 
-def lit_run(build_path, res_file, lit_path, run_threads, nruns):
+
+#this function use global variables
+def lit_run_all_toolchains(nruns):
+	for toolchain_section_name in toolchains_dict.keys():
+		toolchain_section = toolchains_dict[toolchain_section_name]
+		print("\nStart running ", '"', toolchain_section["toolchain_name"],
+			'"', ":", sep = "", end = "\n\n")
+		lit_run_single_tooclchain (toolchain_section["build_path"],
+			toolchain_section["res_file"], lit_path, run_threads, 
+			nruns)
+
+
+def lit_run_single_tooclchain(build_path, res_file, lit_path, run_threads,
+							  nruns):
 	if (nruns == 1):
 		single_lit_run(build_path, lit_path, res_file, run_threads)
 		return
 	for i in range(1, nruns + 1):
+		print(f"\n[{i}]", end = "\n\n")
 		single_lit_run(build_path, lit_path, make_nres_filename(res_file, i),
 					   run_threads)
 
 
 def single_lit_run(build_path, lit_path, res_file, run_threads):
-	lit_options = "-vv -j " + str(run_threads) + " -o " \
-				+ res_file + " " + build_path
+	lit_options = "-vv -j " + str(run_threads) \
+		+ " -o " + res_file + " " + build_path
 
 	os.system(lit_path + " " + lit_options)
 
@@ -177,6 +214,56 @@ def make_nres_filename(res_file, n):
 	return res_file[:dot_last_place] + f"[{n}]" + res_file[dot_last_place:]
 
 
+#this function use global variables
+def compare_all_results(nruns):
+	print("\nStart comparing results:", end = "\n\n")
+	compare_cmd = test_suite_path + "/utils/compare.py -a -f "
+	for toolchain_section_name in toolchains_dict.keys():
+		toolchain_section = toolchains_dict[toolchain_section_name]
+		if nruns == 1:
+			compare_cmd += toolchain_section["res_file"] + " "
+		else:
+			for i in range(1, nruns + 1):
+				compare_cmd += \
+					make_nres_filename(toolchain_section["res_file"], i) + " "
+
+	if results_path == "default":
+		os.system(compare_cmd)
+	else:
+		os.system("cd " + results_path + " && " + compare_cmd)
+
+
+def get_arg_parser():
+	parser = argparse.ArgumentParser("options")
+	parser.add_argument("--config", dest="config", default="config.ini",
+						help="config file")
+	parser.add_argument("--nruns", dest="nruns", type=int, default=1,
+						help="number of runs (natural number)")
+	parser.add_argument("--build-only", dest="build_only",
+						action="store_true", help="only build tests")
+	parser.add_argument("--no-rsync", dest="no_rsync", action="store_true",
+						help="disable synchronization with board \
+						(can be used only with --build-only flag)")
+	parser.add_argument("--run-only", dest="run_only", action="store_true",
+						help="only run tests")
+	parser.add_argument("--compare-results", dest="compare_results",
+						action="store_true", help="print results comparison")
+	parser.add_argument("--debug-config", dest="debug_config",
+						action="store_true", help="only shows config variables \
+						and exit")
+	parser.add_argument("--remote-hostname", dest="remote_hostname",
+						# action = "store_const", const="not specified",
+						help="IP adress of the board")
+	parser.add_argument("--remote-username", dest="remote_username",
+						# action = "store_const", const="not specified",
+						help="board user name")
+	parser.add_argument("--remote-password", dest="remote_password",
+						# action = "store_const", const="not specified",
+						help="board password")
+	return parser
+
+
+#this function use global variables
 def print_config_variables():
 	print("test_suite_path =", test_suite_path)
 	print("lit_path =", lit_path)
@@ -186,6 +273,7 @@ def print_config_variables():
 	print("results_path =", results_path)
 	print("remote_hostname =", remote_hostname)
 	print("remote_username =", remote_username)
+	print("remote_password =", remote_password)
 	print("build_threads =", build_threads)
 	print("run_threads =", run_threads)
 	for toolchain_section_name in toolchains_dict.keys():
@@ -197,55 +285,68 @@ def print_config_variables():
 				sep = "")
 
 
+#this function use global variables
+def setup_ssh_key_connection():
+	print("\nSetting up ssh key connection:", end = "\n\n")
+	os.system("sshpass -p " + remote_password \
+		+ " ssh -o StrictHostKeyChecking=no " \
+		+ remote_username + "@" + remote_hostname + " :")
+	os.system("sshpass -p " + remote_password + " ssh-copy-id -f "\
+		+ remote_username + "@" + remote_hostname)
+
+
+#this function use global variables
+def make_results_path_dir():
+	if results_path != "default":
+		os.system("mkdir -p " + results_path)
+
+
+#this function use global variables
+def setup_remote_host_information(args):
+	global remote_hostname, remote_username, remote_password
+	if args.remote_hostname is not None:
+		remote_hostname = args.remote_hostname
+	if args.remote_username is not None:
+		remote_username = args.remote_username
+	if args.remote_password is not None:
+		remote_password = args.remote_password
+
+	error_code = 0
+	if remote_hostname == "default":
+		print("options: error: remote hostname must be specified")
+		error_code = 1
+	if remote_username == "default":
+		print("options: error: remote username must be specified")
+		error_code = 1
+	if remote_password == "default":
+		print("options: error: remote password must be specified")
+		error_code = 1
+	if error_code == 1:
+		exit(1)
+
+
 def main():
-	parser = argparse.ArgumentParser("options")
-	parser.add_argument("--conf", dest="config", required=True,
-		help="config file")
-	parser.add_argument("--nruns", dest="nruns", type=int, default=1,
-		help="number of runs (natural number)")
-	parser.add_argument("--build-only", dest="build_only",
-		action="store_true", help="only build tests")
-	parser.add_argument("--no-rsync", dest="no_rsync", action="store_true",
-		help="disable synchronization with board \
-(can be used only with --build-only flag)")
-	parser.add_argument("--run-only", dest="run_only", action="store_true",
-		help="only run tests")
-	parser.add_argument("--debug-config", dest="debug_config",
-		action="store_true", help="only shows config variables and exit")
+	parser = get_arg_parser()
 	args = parser.parse_args()
 	check_args(args)
 
 	get_values_from_config(args.config)
+	setup_remote_host_information(args)
 
 	if (args.debug_config):
 		print_config_variables()
 		exit(0)
-
 	if (not args.run_only):
-		for toolchain_section_name in toolchains_dict.keys():
-			toolchain_section = toolchains_dict[toolchain_section_name]
-			print("\nStart building ", '"', toolchain_section["toolchain_name"],
-				'"', ":", sep = "", end = "\n\n")
-			build_tests(toolchain_section["build_path"],
-				toolchain_section["cmake_toolchain_file"],
-				test_suite_subdirs, test_suite_path,
-				remote_username + "@" + remote_hostname, build_threads)
+		build_all_toolchains()
 	if (not args.no_rsync):
-		for toolchain_section_name in toolchains_dict.keys():
-			toolchain_section = toolchains_dict[toolchain_section_name]
-			print("\nStart synchronization ", '"', 
-				toolchain_section["toolchain_name"],'"', ":", sep = "", 
-				end = "\n\n")
-			sync_build_dir_with_board(remote_hostname, remote_username,
-				toolchain_section["build_path"])
+		setup_ssh_key_connection()
+		sync_all_toolchains_build_dirs_with_board()
 	if (not args.build_only):
-		for toolchain_section_name in toolchains_dict.keys():
-			toolchain_section = toolchains_dict[toolchain_section_name]
-			print("\nStart running ", '"', toolchain_section["toolchain_name"],
-				'"', ":", sep = "", end = "\n\n")
-			lit_run (toolchain_section["build_path"],
-				toolchain_section["res_file"], lit_path, run_threads, 
-				args.nruns)
+		setup_ssh_key_connection()
+		make_results_path_dir()
+		lit_run_all_toolchains(args.nruns)
+	if (args.compare_results):
+		compare_all_results(args.nruns)
 
 if __name__ == "__main__":
     main()
