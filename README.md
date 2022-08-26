@@ -11,6 +11,7 @@ This python script can help to build and run [llvm-test-suite](https://llvm.org/
 5. [Test-suite subdirs file](#Test-suite-subdirs-file)
 6. [Running tests with docker](#Running-tests-with-docker)
 7. [Results](#Results)
+8. [Running tests with docker](#Running-tests-with-docker)
 
 ## Requirements for proper work
 
@@ -20,6 +21,8 @@ This python script can help to build and run [llvm-test-suite](https://llvm.org/
 - Prepare a [config file](#Config-file)
 - Prepare a [file with test-suite subdirs list](#Test-suite-subdirs-file)
 - Connect to the board via ssh **using the ssh key** if you want to sync or run tests
+
+**You can avoid all of this by using docker image [Running tests with docker](#unning-tests-with-docker)**
 
 ## Comand-line options
 
@@ -31,6 +34,10 @@ There is some useful comand-line options:
 	- `--no-rsync` -  disable synchronization with board (can be used only with --build-only flag)
 - `--run-only` - only run tests
 - `--nruns NRUNS` (*default = 1*) - number of tests runs (natural number)
+- `--compare-results` - compare and print results to stdout
+- `--remote-hostname` - IP adress of the board (replaces the value in the config, if specified)
+- `--remote-username` - board user name (replaces the value in the config, if specified)
+- `--remote-password` - board password (replaces the value in the config, if specified)
 
 *Important note: tests can only be run if they have been built and synced with the board before. Otherwise it will cause errors.*
 
@@ -38,7 +45,7 @@ There is some useful comand-line options:
 
 Config file - is a file with required variables. It can be passed to the script with option `--config CONFIG`.
 
-#### Structure of config file:
+### Structure of config file:
 ```ini
 [PATHS AND FILES] #required
 test_suite_path = /path/to/test-suite/ #required
@@ -51,6 +58,7 @@ results_path = /path/to/directory/with/test/results/ #optional
 [REMOTE HOST] #required
 remote_hostname = 255.255.255.255 #required
 remote_username = username #required
+remote_password = password #required
 
 [MULTITHREADING] #optional
 build_threads = 4 #optional
@@ -69,7 +77,7 @@ cmake_toolchain_file = cmake-toolchain/gcc-aarch64-linux.cmake #required
 ```
 *You can just copy it and change necessary values*
 
-#### Meaning of variables:
+### Meaning of variables:
 
 **[PATHS AND FILES]** *(required section)*
 - `test_suite_path` *(required)* - path to directory with [test-suite](https://github.com/llvm/llvm-test-suite.git) sources
@@ -82,6 +90,7 @@ cmake_toolchain_file = cmake-toolchain/gcc-aarch64-linux.cmake #required
 **[REMOTE HOST]** *(required section)*
 - `remote_hostname` *(required)* - IP adress of the board
 - `remote_username` *(required)* - board user name
+- `remote_password` *(required)* - board password
 
 **[MULTITHREADING]** *(optional section)*
 - `build_threads` *(default = 1)* - the number of threads that are used to build tests
@@ -89,7 +98,7 @@ cmake_toolchain_file = cmake-toolchain/gcc-aarch64-linux.cmake #required
 
 **[TOOLCHAIN *N*]** *(required at least one section)*
 - `toolchain_name` *(default = [cmake toolchain filename])* - this name will be used to generate build directories and result files name; if not specified, will be taken from the cmake toolchain filename
-- `build_path` *(default = "`builds_dir`"/"`toolchain_name`"/)* - path to build directory (tests will be compiled there) *Important note: use build directory only into `/home/` directory. Use only absolute paths*
+- `build_path` *(default = "`builds_dir`"/"`toolchain_name`"/)* - path to build directory for single toolchain(tests will be compiled there) *Important note: use build directory only into `/home/` directory. Use only absolute paths*
 - `cmake_toolchain_file` *(required)* - path to [cmake-toolchain file](#Cmake-toolchain-file)
 
 **This file is passed via [comand-line opitons](#Comand-line-options) by `--config` option**
@@ -167,15 +176,45 @@ SingleSource/Benchmarks/Shootout/
 ```
 *This example contains benchmarks that were selected specifically to test the performance of the [OpenArkCompiler](https://gitee.com/openarkcompiler/OpenArkCompiler).*
 
-Test-suite subdirs file is a list of paths to individual benchmarks separated by `;`. 
+**Test-suite subdirs file is a list of paths to individual benchmarks separated by `;`.**
+
+You can find 2 files in this repository: *benchmarks_list_all.txt* and *benchmarks_list_select.txt*. *benchmarks_list_all.txt* contents all benchmarks listed above. *benchmarks_list_select.txt* do not contain benchmarks, that [OpenArkCompiler](https://gitee.com/openarkcompiler/OpenArkCompiler) can't compile yet (08/25/2022) (benchmarks: MultiSource/Benchmarks/DOE-ProxyApps-C/RSBench; MultiSource/Applications/sqlite3/; SingleSource/Benchmarks/BenchmarkGame/)  
 
 **This file is passed via [config file](#Config-file) by `test_suite_subdirs_file` variable**
 
 ## Running tests with docker
-
 To run tests more easily, it is possible to use a docker container.
 
-*To be continued*
+### How to run docker container manually:
+#### Run container:
+
+`$ sudo docker run --rm -it korostinskiyr/compiler_performance_testing:manual`
+
+<h4 id="Mount-directory"> Mount directory: </h4>
+
+`$ sudo docker run --rm -it type=bind,source=/path/in/host,destination=/path/in/container *CONTAINER NAME*`
+
+*By mounting directories you can pass [config files](#Config-file), pass [test-suite subdirs files](Test-suite-subdirs-file), pass [cmake-toolchain files](#Cmake-toolchain-file), save results, and and much more*
+
+#### Set up OpenArkCompiler:
+
+` $ cd /home/OpenArkCompiler && source build/envsetup.sh arm release`
+
+<h4 id="Run-script"> Run script: </h4>
+
+` $ cd /home/compiler-performance-testing && ./run_llvm_test_suite.py --remote-hostname 255.255.255.255 --remote-username username --remote-password password --other-options ...`
+
+*Be sure to specify remote-hostname, remote-username, remote-password because because these options are not specified in the default `config.ini`*
+
+*By default script use `config.ini` as [config file](#Config-file) and `benchmarks_list_select.txt` as [test-suite subdirs file](Test-suite-subdirs-file). You can change it by passing the required [comand-line options](#Comand-line-options). If you don't want to mount any directory and save the results, but want to see them, specify the `--compare-results` option*
+
+### How to run docker container automatically:
+
+Here you can run container like a script and pass required options to it.
+
+`$ sudo docker run --rm -it korostinskiyr/compiler_performance_testing:automatic --remote-hostname 255.255.255.255 --remote-username username --remote-password password --other-options ...`
+
+Also check how to [Run script](#Run-script) and [Mount directory](#Mount-directory)
 
 ## Results
 
