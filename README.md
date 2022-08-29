@@ -1,4 +1,4 @@
-# llvm-test-suite build and run ssh script
+# Compiler performance testing with llvm-test-suite 
 
 This python script can help to build and run [llvm-test-suite](https://llvm.org/docs/TestSuiteGuide.html) on board easily.
 
@@ -87,7 +87,7 @@ cmake_toolchain_file = cmake-toolchain/gcc-aarch64-linux.cmake #required
 - `test_suite_subdirs_file` *(default = [runs all tests])* - path to [file with test-suite subdirs list](#Test-suite-subdirs-file)
 - `results_path` *(default = ".")* - path to directory where results will be saved
 
-**[REMOTE HOST]** *(required section)*
+**[REMOTE HOST]** *(optional section)*
 - `remote_hostname` *(default = [value of `--remote_hostname`] flag])* - IP adress of the board
 - `remote_username` *(default = [value of `--remote_username`] flag)* - board user name
 - `remote_password` *(default = [value of `--remote_password`] flag)* - board password
